@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodTune – Emotion-Based Music Recommender</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --accent: #7C3AED; --accent2: #06B6D4; --bg: #0A0A0F;
+  --surface: #13131A; --surface2: #1C1C27; --border: rgba(255,255,255,0.07);
+  --text: #F0EEF8; --muted: #7A7890;
+  --happy:#F59E0B; --sad:#60A5FA; --angry:#EF4444;
+  --fear:#A78BFA; --surprise:#34D399; --neutral:#94A3B8; --disgust:#F97316;
+}
+body { background: var(--bg); font-family: 'Space Grotesk', sans-serif; color: var(--text); min-height: 100vh; }
+
+/* ── Header ── */
+.header { padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.logo { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; }
+.logo span { color: var(--accent2); }
+.logo small { font-size: 11px; font-weight: 400; color: var(--muted); display: block; letter-spacing: 2px; text-transform: uppercase; }
+.status-badge { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 100px; padding: 6px 14px; font-size: 12px; color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #22C55E; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+
+/* ── Layout ── */
+.main { display: grid; grid-template-columns: 360px 1fr; gap: 24px; padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+
+/* ── Camera Panel ── */
+.cam-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.cam-feed { position: relative; width: 100%; background: #000; aspect-ratio: 4/3; overflow: hidden; }
+video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+canvas { z-index: 2; }
+.scan-overlay { position: absolute; inset: 0; z-index: 3; pointer-events: none; display: none; }
+.scan-overlay.active { display: block; }
+.scan-line { position: absolute; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg,transparent,var(--accent2),transparent); animation: scanY 1.5s ease-in-out infinite; }
+@keyframes scanY { 0%{top:10%}100%{top:85%} }
+.cam-corners { position: absolute; inset: 20px; border: 2px solid var(--accent2); border-radius: 8px; }
+.cam-label { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; background: linear-gradient(transparent, rgba(0,0,0,.7)); font-size: 11px; color: var(--muted); text-align: center; letter-spacing: 1px; text-transform: uppercase; z-index: 4; }
+.no-cam { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 10px; color: var(--muted); font-size: 13px; }
+.no-cam-icon { font-size: 48px; }
+
+.emotion-result { padding: 16px; display: flex; align-items: center; justify-content: space-between; }
+.emotion-name { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; transition: color .4s; }
+.confidence { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+.bar-section { padding: 0 16px 12px; display: flex; flex-direction: column; gap: 7px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 11px; color: var(--muted); width: 52px; }
+.bar-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 10px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 10px; transition: width .6s cubic-bezier(.34,1.56,.64,1); }
+.bar-val { font-size: 11px; color: var(--muted); width: 34px; text-align: right; }
+
+.btn-row { display: flex; gap: 10px; padding: 12px 16px 16px; }
+.btn { flex: 1; padding: 11px; border: none; border-radius: 10px; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all .2s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #6D28D9; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+.btn-secondary { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+.btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+/* ── Right Panel ── */
+.right-panel { display: flex; flex-direction: column; gap: 20px; }
+
+.mood-banner { padding: 20px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; gap: 20px; }
+.mood-icon-lg { font-size: 48px; }
+.mood-text h2 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+.mood-text p { font-size: 13px; color: var(--muted); margin-top: 5px; line-height: 1.5; }
+
+.section-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+
+.mood-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 6px 14px; border-radius: 100px; border: 1px solid var(--border); background: var(--surface2); font-size: 12px; cursor: pointer; transition: all .2s; color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
+.chip:hover, .chip.active { border-color: var(--accent); color: var(--text); background: rgba(124,58,237,.15); }
+
+/* ── Track grid ── */
+.track-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.track-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; display: flex; gap: 12px; align-items: center;
+  cursor: pointer; transition: all .2s; text-decoration: none;
+}
+.track-card:hover { border-color: rgba(255,255,255,.18); transform: translateY(-2px); }
+.track-card.playing { border-color: var(--accent2); }
+.track-art { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.track-info { flex: 1; min-width: 0; }
+.track-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.track-artist { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.yt-btn { width: 30px; height: 30px; border-radius: 50%; background: #FF0000; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; color: #fff; text-decoration: none; transition: transform .2s; }
+.yt-btn:hover { transform: scale(1.15); }
+
+.yt-note { font-size: 11px; color: var(--muted); text-align: center; padding: 6px 0 2px; }
+.yt-note a { color: var(--accent2); text-decoration: none; }
+
+@media (max-width: 800px) {
+  .main { grid-template-columns: 1fr; }
+  .track-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Mood<span>Tune</span><small>Emotion-Based Music Recommender</small></div>
+  <div class="status-badge"><div class="dot"></div>DeepFace Engine Active</div>
+</div>
+
+<div class="main">
+
+  <!-- Camera Panel -->
+  <div class="cam-panel">
+    <div class="cam-feed" id="camFeed">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas" style="display:none"></canvas>
+      <div class="scan-overlay" id="scanOverlay">
+        <div class="cam-corners"></div>
+        <div class="scan-line"></div>
+      </div>
+      <div class="no-cam" id="noCam">
+        <div class="no-cam-icon">📷</div>
+        <span>Click "Start Camera" to begin</span>
+      </div>
+      <div class="cam-label" id="camLabel">Camera not started</div>
+    </div>
+
+    <div class="emotion-result">
+      <div>
+        <div class="emotion-name" id="emotionName" style="color:var(--neutral)">NEUTRAL</div>
+        <div class="confidence" id="confText">Confidence: —</div>
+      </div>
+      <div style="font-size:40px" id="emotionIconLg">😐</div>
+    </div>
+
+    <div class="bar-section" id="barSection">
+      <!-- bars injected by JS -->
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="camBtn" onclick="toggleCamera()">Start Camera</button>
+      <button class="btn btn-primary" id="detectBtn" onclick="detectEmotion()" disabled>Detect Emotion</button>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="mood-banner">
+      <div class="mood-icon-lg" id="moodIcon">🎵</div>
+      <div class="mood-text">
+        <h2 id="moodTitle">Scan your face or pick a mood</h2>
+        <p id="moodDesc">The AI detects your facial expression via DeepFace and recommends the perfect playlist for your emotional state.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Manual Mood Override</div>
+      <div class="mood-chips" id="moodChips">
+        <div class="chip active" onclick="fetchPlaylist('neutral')">😐 Neutral</div>
+        <div class="chip" onclick="fetchPlaylist('happy')">😄 Happy</div>
+        <div class="chip" onclick="fetchPlaylist('sad')">😢 Sad</div>
+        <div class="chip" onclick="fetchPlaylist('angry')">😡 Angry</div>
+        <div class="chip" onclick="fetchPlaylist('surprise')">😮 Surprise</div>
+        <div class="chip" onclick="fetchPlaylist('fear')">😨 Fear</div>
+        <div class="chip" onclick="fetchPlaylist('disgust')">🤢 Disgust</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Recommended Tracks — click ▶ to open on YouTube</div>
+      <div class="track-grid" id="trackGrid"></div>
+      <p class="yt-note" id="ytNote"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+const API = "";  // same origin; change to "http://localhost:5000" if running separately
+
+const EMOJIS = {happy:"😄",sad:"😢",angry:"😡",surprise:"😮",fear:"😨",neutral:"😐",disgust:"🤢"};
+const COLORS = {happy:"#F59E0B",sad:"#60A5FA",angry:"#EF4444",surprise:"#34D399",fear:"#A78BFA",neutral:"#94A3B8",disgust:"#F97316"};
+const ARTS   = {happy:["🌟","🎉","🕺","🔥","💃","✨"],sad:["🌧","💙","🌊","🍂","🌙","🌿"],angry:["⚡","🔥","💥","😤","🎸","🤘"],surprise:["⚡","🌈","🎆","🏛","🕹","🎊"],fear:["☁️","🌙","🎹","🌸","🌊","🕊"],neutral:["🌃","🎸","🌿","💎","🎬","🌬"],disgust:["🌀","😶","🖤","🔩","🌫","🎭"]};
+const BGCOLS = ["#1e1e2e","#1a1a2e","#16213e","#0f3460","#533483","#2d2d44"];
+
+let stream = null;
+let cameraActive = false;
+let currentEmotion = "neutral";
+
+// ── Bars init ─────────────────────────────────────────────────────────────────
+const barEmotions = ["happy","sad","angry","surprise","fear","neutral","disgust"];
+function initBars() {
+  const sec = document.getElementById("barSection");
+  sec.innerHTML = barEmotions.map(e => `
+    <div class="bar-row">
+      <div class="bar-label">${e.charAt(0).toUpperCase()+e.slice(1)}</div>
+      <div class="bar-track"><div class="bar-fill" id="bar-${e}" style="width:${e==='neutral'?50:5}%;background:${COLORS[e]}"></div></div>
+      <div class="bar-val" id="val-${e}">${e==='neutral'?50:5}%</div>
+    </div>`).join("");
+}
+initBars();
+
+function updateBars(scores) {
+  barEmotions.forEach(e => {
+    const v = Math.round(scores[e] || 0);
+    document.getElementById(`bar-${e}`).style.width = v + "%";
+    document.getElementById(`val-${e}`).textContent = v + "%";
+  });
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+async function toggleCamera() {
+  if (cameraActive) {
+    stopCamera();
+  } else {
+    await startCamera();
+  }
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:"user" }, audio:false });
+    const video = document.getElementById("video");
+    video.srcObject = stream;
+    video.style.display = "block";
+    document.getElementById("noCam").style.display = "none";
+    document.getElementById("camLabel").textContent = "Camera active — position your face";
+    document.getElementById("camBtn").textContent = "Stop Camera";
+    document.getElementById("detectBtn").disabled = false;
+    cameraActive = true;
+  } catch (err) {
+    alert("Camera access denied or unavailable: " + err.message);
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById("video").style.display = "none";
+  document.getElementById("noCam").style.display = "flex";
+  document.getElementById("camLabel").textContent = "Camera not started";
+  document.getElementById("camBtn").textContent = "Start Camera";
+  document.getElementById("detectBtn").disabled = true;
+  cameraActive = false;
+}
+
+// ── Capture frame → base64 ───────────────────────────────────────────────────
+function captureFrame() {
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext("2d").drawImage(video, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
+// ── Detect emotion via Flask API ──────────────────────────────────────────────
+async function detectEmotion() {
+  if (!cameraActive) return;
+  const btn = document.getElementById("detectBtn");
+  btn.disabled = true;
+  btn.textContent = "Scanning...";
+  document.getElementById("scanOverlay").classList.add("active");
+  document.getElementById("camLabel").textContent = "Analyzing facial expression...";
+
+  try {
+    const image = captureFrame();
+    const res = await fetch(API + "/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    applyResult(data);
+  } catch (err) {
+    document.getElementById("camLabel").textContent = "Error: " + err.message;
+    console.error(err);
+  } finally {
+    document.getElementById("scanOverlay").classList.remove("active");
+    btn.disabled = false;
+    btn.textContent = "Detect Emotion";
+  }
+}
+
+function applyResult(data) {
+  const { emotion, confidence, scores, playlist } = data;
+  currentEmotion = emotion;
+
+  document.getElementById("emotionName").textContent = emotion.toUpperCase();
+  document.getElementById("emotionName").style.color = COLORS[emotion] || "#94A3B8";
+  document.getElementById("emotionIconLg").textContent = EMOJIS[emotion] || "😐";
+  document.getElementById("confText").textContent = `Confidence: ${Math.round(confidence)}%`;
+  document.getElementById("camLabel").textContent = `Detected: ${emotion.toUpperCase()} ✓`;
+
+  updateBars(scores);
+  updateMoodBanner(emotion);
+  setActiveChip(emotion);
+  renderTracks(playlist, ARTS[emotion] || ARTS.neutral);
+}
+
+// ── Manual mood fetch ────────────────────────────────────────────────────────
+async function fetchPlaylist(emotion) {
+  setActiveChip(emotion);
+  updateMoodBanner(emotion);
+  currentEmotion = emotion;
+  document.getElementById("emotionName").textContent = emotion.toUpperCase();
+  document.getElementById("emotionName").style.color = COLORS[emotion];
+  document.getElementById("emotionIconLg").textContent = EMOJIS[emotion];
+
+  try {
+    const res = await fetch(API + "/playlist/" + emotion);
+    const data = await res.json();
+    renderTracks(data.playlist, ARTS[emotion] || ARTS.neutral);
+  } catch {
+    // Fallback if backend not running
+    renderFallbackTracks(emotion);
+  }
+}
+
+// ── Track rendering with YouTube links ───────────────────────────────────────
+function renderTracks(playlist, arts) {
+  const grid = document.getElementById("trackGrid");
+  grid.innerHTML = playlist.map((t, i) => `
+    <a class="track-card" href="${t.youtube_url}" target="_blank" rel="noopener">
+      <div class="track-art" style="background:${BGCOLS[i%BGCOLS.length]}">${arts[i] || "🎵"}</div>
+      <div class="track-info">
+        <div class="track-title">${t.title}</div>
+        <div class="track-artist">${t.artist}</div>
+      </div>
+      <div class="yt-btn">▶</div>
+    </a>`).join("");
+
+  document.getElementById("ytNote").textContent = "Each card opens a YouTube search in a new tab";
+}
+
+function renderFallbackTracks(emotion) {
+  const fallback = {
+    happy: [{title:"Happy",artist:"Pharrell Williams"},{title:"Can't Stop the Feeling",artist:"Justin Timberlake"},{title:"Uptown Funk",artist:"Bruno Mars"},{title:"Good as Hell",artist:"Lizzo"},{title:"Shake It Off",artist:"Taylor Swift"},{title:"Blinding Lights",artist:"The Weeknd"}],
+    sad: [{title:"The Night We Met",artist:"Lord Huron"},{title:"Someone Like You",artist:"Adele"},{title:"Fix You",artist:"Coldplay"},{title:"Skinny Love",artist:"Bon Iver"},{title:"Chasing Cars",artist:"Snow Patrol"},{title:"River",artist:"Leon Bridges"}],
+    angry: [{title:"In The End",artist:"Linkin Park"},{title:"Killing In The Name",artist:"Rage Against the Machine"},{title:"Break Stuff",artist:"Limp Bizkit"},{title:"Numb",artist:"Linkin Park"},{title:"Given Up",artist:"Linkin Park"},{title:"Headstrong",artist:"Trapt"}],
+    surprise: [{title:"Electric Feel",artist:"MGMT"},{title:"Pursuit of Happiness",artist:"Kid Cudi"},{title:"Pompeii",artist:"Bastille"},{title:"Take On Me",artist:"a-ha"},{title:"Midnight City",artist:"M83"},{title:"Do I Wanna Know",artist:"Arctic Monkeys"}],
+    fear: [{title:"Weightless",artist:"Marconi Union"},{title:"Clair de Lune",artist:"Debussy"},{title:"Experience",artist:"Ludovico Einaudi"},{title:"Gymnopédie No.1",artist:"Erik Satie"},{title:"Aqueous Transmission",artist:"Incubus"},{title:"Safe and Sound",artist:"Taylor Swift"}],
+    neutral: [{title:"Midnight City",artist:"M83"},{title:"Do I Wanna Know",artist:"Arctic Monkeys"},{title:"Redbone",artist:"Childish Gambino"},{title:"Crystalised",artist:"The XX"},{title:"Motion Picture Soundtrack",artist:"Radiohead"},{title:"Breathe",artist:"Pink Floyd"}],
+    disgust: [{title:"Creep",artist:"Radiohead"},{title:"Fake Plastic Trees",artist:"Radiohead"},{title:"Black",artist:"Pearl Jam"},{title:"Hurt",artist:"Nine Inch Nails"},{title:"Mad World",artist:"Gary Jules"},{title:"The Sound of Silence",artist:"Simon and Garfunkel"}],
+  };
+  const arts = ARTS[emotion] || ARTS.neutral;
+  const tracks = (fallback[emotion] || fallback.neutral).map(t => ({
+    ...t,
+    youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(t.title + " " + t.artist + " official audio")}`
+  }));
+  renderTracks(tracks, arts);
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+const MOOD_INFO = {
+  happy: { icon:"😄", title:"You're feeling Happy!", desc:"Your smile says it all. Upbeat, energetic tracks to keep the good vibes rolling." },
+  sad: { icon:"😢", title:"Feeling a little down…", desc:"It's okay. Here are soothing, comforting melodies to sit with you." },
+  angry: { icon:"😡", title:"Feeling intense right now", desc:"Channel that energy. These tracks match your fire." },
+  surprise: { icon:"😮", title:"You seem surprised!", desc:"Something unexpected? Here's a fresh mix for your wide-eyed energy." },
+  fear: { icon:"😨", title:"Feeling anxious or scared?", desc:"Let calm, reassuring music ease your mind. You've got this." },
+  neutral: { icon:"😐", title:"Feeling neutral today", desc:"Balanced and calm. Here's a well-rounded mix for your mood." },
+  disgust: { icon:"🤢", title:"Something bothering you?", desc:"Take a step back with some introspective, meaningful music." },
+};
+
+function updateMoodBanner(emotion) {
+  const m = MOOD_INFO[emotion] || MOOD_INFO.neutral;
+  document.getElementById("moodIcon").textContent = m.icon;
+  document.getElementById("moodTitle").textContent = m.title;
+  document.getElementById("moodDesc").textContent = m.desc;
+}
+
+function setActiveChip(emotion) {
+  document.querySelectorAll(".chip").forEach(c => {
+    c.classList.toggle("active", c.textContent.toLowerCase().includes(emotion));
+  });
+}
+
+// ── Init: load default playlist ───────────────────────────────────────────────
+renderFallbackTracks("neutral");
+</script>
+</body>
+</html>
