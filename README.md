@@ -1,169 +1,121 @@
-# MoodTune — Emotion-Based Music Recommender
-### B.Tech Project | CSE | I.T.S Engineering College, Greater Noida
+# 🎧 MoodTune — Emotion-Based Music Recommender
+
+> An AI-powered web application that detects user emotions in real-time and recommends music accordingly.
 
 ---
 
-## Project Structure
+## 🚀 Overview
+
+MoodTune is an intelligent music recommendation system that uses **facial emotion recognition** to suggest songs based on your mood. It captures live webcam input, analyzes emotions using Deep Learning, and dynamically generates playlists.
+
+---
+
+## ✨ Features
+
+- 🎥 Real-time emotion detection using webcam
+- 🧠 AI-powered analysis with DeepFace
+- 🎵 Smart music recommendations based on detected mood
+- 🔗 Instant YouTube playback links
+- 🌐 Clean and responsive web interface
+
+---
+
+## 🏗️ Project Structure
 
 ```
 moodtune/
-├── app.py              ← Flask backend (DeepFace emotion detection)
-├── requirements.txt    ← Python dependencies
+├── app.py              # Flask backend (emotion detection)
+├── requirements.txt    # Dependencies
 ├── templates/
-│   └── index.html      ← Full frontend (webcam + YouTube links)
+│   └── index.html      # Frontend (UI + webcam)
 └── README.md
 ```
 
 ---
 
-## Setup Instructions
+## ⚙️ Installation & Setup
 
-### Step 1 — Install Python dependencies
+### 1️⃣ Clone the repository
+
+```bash
+git clone https://github.com/your-username/emotion-based-music-recommender.git
+cd emotion-based-music-recommender
+```
+
+### 2️⃣ Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-> **Note:** DeepFace will auto-download its model weights (~100 MB) on first run.
+> ⚠️ DeepFace downloads model weights (~100MB) on first run.
 
-### Step 2 — Run the Flask server
+### 3️⃣ Run the application
 
 ```bash
 python app.py
 ```
 
-You should see:
-```
-* Running on http://0.0.0.0:5000
-```
+### 4️⃣ Open in browser
 
-### Step 3 — Open the app
-
-Open your browser and go to:
 ```
 http://localhost:5000
 ```
 
 ---
 
-## How It Works
-
-### Flow Diagram
+## 🧠 How It Works
 
 ```
-Webcam (OpenCV) → Base64 Frame → Flask /detect API
-       ↓
-   DeepFace.analyze()
-       ↓
- Emotion + Confidence Scores
-       ↓
- Playlist Mapping (emotion → tracks)
-       ↓
- YouTube Search URLs → Frontend Display
-```
-
-### API Endpoints
-
-| Method | Endpoint           | Description                          |
-|--------|--------------------|--------------------------------------|
-| GET    | `/`                | Serve the main HTML frontend         |
-| POST   | `/detect`          | Accept webcam frame, return emotion  |
-| GET    | `/playlist/<mood>` | Return playlist for a given emotion  |
-
-### POST /detect — Request Body
-
-```json
-{
-  "image": "data:image/jpeg;base64,/9j/4AAQ..."
-}
-```
-
-### POST /detect — Response
-
-```json
-{
-  "emotion": "happy",
-  "confidence": 87.3,
-  "scores": {
-    "happy": 87.3,
-    "neutral": 7.1,
-    "sad": 2.4,
-    "angry": 1.5,
-    "surprise": 1.0,
-    "fear": 0.5,
-    "disgust": 0.2
-  },
-  "playlist": [
-    {
-      "title": "Happy",
-      "artist": "Pharrell Williams",
-      "youtube_url": "https://www.youtube.com/results?search_query=Happy+Pharrell+Williams+official+audio"
-    }
-  ]
-}
+Webcam → Image Capture → DeepFace Analysis → Emotion Detection
+        ↓
+   Emotion Mapping → Playlist Generation → YouTube Links
 ```
 
 ---
 
-## Technology Stack (as per Synopsis)
+## 🔌 API Endpoints
 
-| Component         | Technology Used                    |
-|-------------------|------------------------------------|
-| Emotion Detection | DeepFace (FER2013 + OpenCV)        |
-| Image Processing  | OpenCV (cv2)                       |
-| Backend           | Python + Flask                     |
-| Frontend          | HTML5 + CSS3 + JavaScript          |
-| Music Integration | YouTube Search API (URL-based)     |
-| Webcam Access     | HTML5 `getUserMedia` API           |
+| Method | Endpoint           | Description                   |
+| ------ | ------------------ | ----------------------------- |
+| GET    | `/`                | Load web interface            |
+| POST   | `/detect`          | Detect emotion from image     |
+| GET    | `/playlist/<mood>` | Get songs for a specific mood |
 
 ---
 
-## Team
+## 🛠️ Tech Stack
 
-| Name              | Enrollment No.  |
-|-------------------|-----------------|
-| Abhishek Parmar   | 2202220100010   |
-| Abhishek Solanki  | 2202220100013   |
-| Aditya Kumar      | 2202220100022   |
-| Ankit Kushwaha    | 2202220100037   |
-
-**Supervisor:** Prof. Biswa Mohan Sahoo  
-**Session:** 2025-26 | BCS 753
+- **Frontend:** HTML, CSS, JavaScript
+- **Backend:** Python, Flask
+- **AI Model:** DeepFace
+- **Computer Vision:** OpenCV
+- **Music Source:** YouTube
 
 ---
 
-## Optional: Spotify Integration
+## 🔮 Future Improvements
 
-To use real Spotify playback instead of YouTube links:
-
-1. Create an app at https://developer.spotify.com
-2. Get your `Client ID` and `Client Secret`
-3. Install spotipy: `pip install spotipy`
-4. Replace the `build_youtube_url()` function in `app.py` with Spotify search calls
-
-```python
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id="YOUR_CLIENT_ID",
-    client_secret="YOUR_CLIENT_SECRET"
-))
-
-def search_spotify(title, artist):
-    results = sp.search(q=f"{title} {artist}", type="track", limit=1)
-    items = results["tracks"]["items"]
-    if items:
-        return items[0]["external_urls"]["spotify"]
-    return None
-```
+- 🎧 Spotify API integration
+- 📱 Mobile-friendly UI
+- 📊 Emotion history tracking
+- 🤖 Improved recommendation system
 
 ---
 
-## References
+## 👨‍💻 Author
 
-1. Goodfellow, I., Bengio, Y., & Courville, A. (2016). *Deep Learning*. MIT Press.
-2. Li, S., Deng, W. (2020). Deep Facial Expression Recognition: A Survey. *IEEE Transactions on Affective Computing*.
-3. DeepFace Library — https://github.com/serengil/deepface
-4. Spotify Developer API — https://developer.spotify.com
-5. OpenCV Documentation — https://opencv.org
+**Abhishek Parmar**
+
+---
+
+## 💡 Key Highlights
+
+- Real-time AI + Web integration
+- End-to-end full-stack project
+- Practical use of Machine Learning
+- API design and implementation
+
+---
+
+⭐ _If you found this project interesting, consider giving it a star!_
